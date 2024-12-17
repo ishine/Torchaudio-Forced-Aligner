@@ -1,5 +1,11 @@
 # Torchaudio-Forced-Aligner
 
+## Install
+
+``` bash
+$ pip install torchfa
+```
+
 ## Usage
 
 ``` python
