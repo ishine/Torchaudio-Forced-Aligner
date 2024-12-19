@@ -98,7 +98,7 @@ class Dataset(UnsupervisedDataset):
                 chars.append(item["word"].lower())
                 words.append(item["word"])
             else:
-                chars.append("-")
+                chars.append("'")
                 words.append(item["word"])
         return chars, words
 

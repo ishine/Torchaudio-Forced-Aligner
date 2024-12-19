@@ -33,6 +33,10 @@ class TorchaudioForcedAligner:
         self.aligner = bundle.get_aligner()
         self.tokenizer = bundle.get_tokenizer()
 
+    @property
+    def labels(self):
+        return bundle.get_labels()
+
     def align_cuts(self, cuts: CutSet):
         dset = Dataset(cuts, batch_size=self.batch_size, sampling_rate=self.sample_rate)
         for batch in dset.dataloader:
