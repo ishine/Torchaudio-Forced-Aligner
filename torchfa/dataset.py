@@ -78,7 +78,7 @@ class Dataset(UnsupervisedDataset):
     def process_cut(self, cut: DataCut) -> DataCut:
         if cut.num_channels > 1:
             logger.warning(f"Downmix {cut.id} from {cut.num_channels} to mono.")
-            # to_mono() will remove the supervisions of the cut
+            # to_mono(mono_downmix=True) will remove the supervisions of the cut
             supervisions = cut.supervisions
             cut = cut.to_mono(mono_downmix=True)
             cut.supervisions = supervisions
