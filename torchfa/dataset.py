@@ -53,6 +53,14 @@ class Dataset(UnsupervisedDataset):
 
     @staticmethod
     def build_cuts(wav_paths: List[Union[Path, str]], texts: List[str]) -> CutSet:
+        """
+        Builds a CutSet from a list of audio file paths and their corresponding transcripts.
+        Args:
+            wav_paths (List[Union[Path, str]]): A list of audio file paths.
+            texts (List[str]): A list of corresponding transcripts.
+        Returns:
+            CutSet: A CutSet containing audio cuts with their supervisions.
+        """
         cuts = []
         for wav_path, text in zip(wav_paths, texts):
             rec = Recording.from_file(wav_path)
@@ -76,18 +84,32 @@ class Dataset(UnsupervisedDataset):
         return CutSet.from_cuts(cuts)
 
     def process_cut(self, cut: DataCut) -> DataCut:
+        """
+        Processes a cut by ensuring it is mono, resampling it to the target sampling rate, and trimming it to the supervisions.
+        Args:
+            cut (DataCut): The cut to process.
+        Returns:
+            DataCut: The processed cut.
+        """
         if cut.num_channels > 1:
-            logger.warning(f"Downmix {cut.id} from {cut.num_channels} to mono.")
-            # to_mono(mono_downmix=True) will remove the supervisions of the cut
-            supervisions = cut.supervisions
-            cut = cut.to_mono(mono_downmix=True)
-            cut.supervisions = supervisions
+            logger.warning(f"Select the first channel from {cut.num_channels} channels of {cut.id}.")
+            # to_mono(mono_downmix=True) will create a new cut (start=0) without supervisions.
+            cut = cut.to_mono()[0]
         if cut.sampling_rate != self.sampling_rate:
             logger.warning(f"Resample {cut.id} from {cut.sampling_rate} to {self.sampling_rate}.")
             cut = cut.resample(self.sampling_rate)
-        return cut
+        return cut.trim_to_supervisions()[0]
 
     def g2p(self, text: str) -> Tuple[List[str], List[str]]:
+        """
+        Converts text to phonemes and words using G2P.
+        Args:
+            text (str): The input text to convert.
+        Returns:
+            Tuple[List[str], List[str]]: A tuple containing two lists:
+                - A list of phonemes (characters).
+                - A list of words.
+        """
         chars = []
         words = []
         for item in self.g2per.g2p(text):
@@ -103,10 +125,21 @@ class Dataset(UnsupervisedDataset):
         return chars, words
 
     def __getitem__(self, cuts: CutSet) -> Dict[str, Any]:
-        cuts = cuts.map(self.process_cut)
+        """
+        Processes a batch of cuts and returns a dictionary containing audio data, lengths, characters, and words.
+        Args:
+            cuts (CutSet): A CutSet containing the cuts to process.
+        Returns:
+            Dict[str, Any]: A dictionary with the following keys:
+                - 'cuts': The processed cuts.
+                - 'audio': A tensor of audio samples.
+                - 'audio_lens': A tensor of audio lengths.
+                - 'chars': A list of phonemes (characters).
+                - 'words': A list of words.
+        """
         self._validate(cuts)
 
-        audio, audio_lens = collate_audio(cuts)
+        audio, audio_lens = collate_audio(cuts.map(self.process_cut))
         chars, words = zip(*[self.g2p(cut.supervisions[0].text) for cut in cuts])
         return {
             "cuts": cuts,
@@ -121,6 +154,9 @@ class Dataset(UnsupervisedDataset):
         for cut in cuts:
             assert cut.has_recording
             assert len(cut.supervisions) == 1, f"{cut.id} has more than one supervision: {len(cut.supervisions)}."
+            # Timestamps of the supervision are relative to the cut
+            assert cut.supervisions[0].start >= 0
+            assert cut.supervisions[0].end <= cut.duration
 
     @property
     def dataloader(self) -> DataLoader:
