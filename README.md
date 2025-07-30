@@ -1,14 +1,28 @@
-# Torchaudio-Forced-Aligner
+# torchfa
 
-## Install
+[![PyPI](https://img.shields.io/pypi/v/torchfa)](https://pypi.org/project/torchfa/)
+[![License](https://img.shields.io/github/license/pengzhendong/torchfa)](LICENSE)
 
-``` bash
-$ pip install torchfa
+A Python package for performing forced alignment on audio files using Torchaudio's MMS model. This tool aligns audio with text transcripts to provide precise timing information for each word, making it useful for speech analysis, subtitling, and other applications requiring accurate speech-text synchronization.
+
+## Features
+
+- High-accuracy forced alignment using Torchaudio's MMS model
+- Support for both Chinese and English text
+- Batch processing capabilities for multiple audio files
+- Output aligned segments in various formats including TextGrid
+
+## Installation
+
+```bash
+pip install torchfa
 ```
 
 ## Usage
 
-``` python
+### Basic Usage
+
+```python
 from torchfa import TorchaudioForcedAligner
 
 aligner = TorchaudioForcedAligner()
@@ -17,10 +31,15 @@ audio = "assets/clean_speech.wav"
 transcript = "关服务高端产品仍处于供不应求的局面"
 cut = aligner.align_audios(audio, transcript)
 
+# Save aligned audio segments
 cut.trim_to_alignments("word").save_audios("./")
+
+# Print alignment results
 for alignment in cut.supervisions[0].alignment["word"]:
     print(alignment)
 ```
+
+Output:
 
 ```
 AlignmentItem(symbol='关', start=0.02, duration=0.121, score=0.21)
@@ -41,3 +60,48 @@ AlignmentItem(symbol='的', start=2.935, duration=0.08, score=0.99)
 AlignmentItem(symbol='局', start=3.075, duration=0.101, score=0.98)
 AlignmentItem(symbol='面', start=3.256, duration=0.221, score=0.94)
 ```
+
+### Saving to TextGrid Format
+
+```python
+from torchfa import TorchaudioForcedAligner
+from torchfa.utils import save_text_grid
+
+aligner = TorchaudioForcedAligner()
+
+audio = "assets/clean_speech.wav"
+transcript = "关服务高端产品仍处于供不应求的局面"
+cut = aligner.align_audios(audio, transcript)
+
+# Save as TextGrid file
+save_text_grid(cut.supervisions[0].alignment["word"], "output.TextGrid", "long")
+```
+
+### Batch Processing
+
+```python
+from torchfa import TorchaudioForcedAligner
+
+aligner = TorchaudioForcedAligner(batch_size=4)  # Process 4 files at once
+
+audio_paths = [
+    "audio1.wav",
+    "audio2.wav",
+    "audio3.wav"
+]
+transcripts = [
+    "This is the first transcript.",
+    "This is the second transcript.",
+    "This is the third transcript."
+]
+
+cuts = aligner.align_audios(audio_paths, transcripts)
+
+for cut in cuts:
+    for alignment in cut.supervisions[0].alignment["word"]:
+        print(alignment)
+```
+
+## License
+
+[MIT](LICENSE)

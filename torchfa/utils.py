@@ -12,7 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import List
+from itertools import groupby
+from typing import Any, Dict, List, Union
 
 import torch
 import torchaudio.functional as F
@@ -26,6 +27,7 @@ io.unicode = str
 def forced_align(log_probs: torch.Tensor, targets: torch.Tensor, blank: int = 0) -> List[AlignmentItem]:
     """
     Perform CTC alignment on the given log probabilities and targets.
+
     Args:
         log_probs (torch.Tensor): Log probabilities of CTC emission output. Tensor of shape (T, C), where T is the input length, and C is the number of characters in the alphabet including blank.
         targets (torch.Tensor): Target sequence. Tensor of shape (L,), where L is the target length.
@@ -37,33 +39,46 @@ def forced_align(log_probs: torch.Tensor, targets: torch.Tensor, blank: int = 0)
     alignments, scores = F.forced_align(log_probs, targets, blank=blank)
     alignments, scores = alignments[0], scores[0]
 
-    cur = 0
     items = []
-    while cur < len(alignments):
-        token = alignments[cur]
-        if token != blank:
-            items.append({"symbol": token.item(), "start": cur, "duration": 1, "score": scores[cur].item()})
-        while cur < len(alignments) and alignments[cur] == token:
-            if token != blank:
-                items[-1]["duration"] += 1
-                items[-1]["score"] += scores[cur].item()
-            cur += 1
-    for i in range(len(items)):
-        items[i] = AlignmentItem(**items[i])
+    # use enumerate to keep track of the original indices, then group by token value
+    for token, group in groupby(enumerate(alignments), key=lambda item: item[1]):
+        if token == blank:
+            continue
+        group = list(group)
+        start = group[0][0]
+        duration = len(group)
+        score = scores[start : start + duration].sum().item()
+        items.append(AlignmentItem(token.item(), start, duration, score))
     return items
 
 
-def save_text_grid(alignments: List[AlignmentItem], save_path: str, format: str = "short"):
+def save_text_grid(
+    alignments: List[Union[AlignmentItem, Dict[str, Any], Interval]], save_path: str, format: str = "short"
+):
     """
     Saves the given alignments to a TextGrid file.
+
     Args:
-        alignments (TextGrid): The TextGrid object to save.
+        alignments (List[Union[AlignmentItem, Dict[str, Any], Interval]]): A list of alignments to be saved.
+            Each alignment can be an AlignmentItem, a dictionary, or an Interval object.
         save_path (str): The file path where the TextGrid will be saved.
         format (str): The format of the TextGrid file. Default is "short".
     """
     tier = IntervalTier()
     for alignment in alignments:
-        interval = Interval(alignment.start, alignment.end, alignment.symbol)
+        if isinstance(alignment, Interval):
+            start_time = alignment.start_time
+            end_time = alignment.end_time
+            text = alignment.text
+        elif isinstance(alignment, AlignmentItem):
+            start_time = alignment.start
+            end_time = alignment.end
+            text = alignment.symbol
+        else:
+            start_time = alignment.get("start_time", alignment.get("start", 0))
+            end_time = alignment.get("end_time", alignment.get("end", start_time + alignment.get("duration", 0)))
+            text = alignment.get("text", alignment.get("symbol", ""))
+        interval = Interval(round(start_time, 3), round(end_time, 3), text)
         tier.add_interval(interval)
 
     text_grid = TextGrid()

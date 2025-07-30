@@ -7,7 +7,7 @@ name = "torchfa"
 authors = [{ name = "Zhendong Peng", email = "pzd17@tsinghua.org.cn" }]
 description = "TorchAudio Forced Aligner"
 readme = "README.md"
-license = "MIT"
+license = {file = "LICENSE"}
 requires-python = ">=3.8"
 dynamic = ["version"]
 classifiers = [
@@ -29,3 +29,6 @@ BugTracker = "https://github.com/pengzhendong/torchfa/issues"
 
 [tool.setuptools.dynamic]
 version = { file = "VERSION" }
+
+[tool.setuptools.packages.find]
+exclude = ["assets", "assets.*"]

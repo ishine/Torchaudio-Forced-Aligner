@@ -40,9 +40,10 @@ class TorchaudioForcedAligner:
     def align_cuts(self, cuts: CutSet):
         """
         Aligns the given cuts using the torchaudio forced aligner.
+
         Args:
             cuts (CutSet): A CutSet containing audio cuts to be aligned.
-        Returns:
+        Yields:
             CutSet: A CutSet with aligned supervisions.
         """
         dset = Dataset(cuts, batch_size=self.batch_size, sampling_rate=self.sample_rate)
@@ -77,6 +78,7 @@ class TorchaudioForcedAligner:
     def align_audios(self, audio_paths: Union[List[str], str], transcripts: Union[List[str], str]):
         """
         Aligns audio files with their corresponding transcripts.
+
         Args:
             audio_paths (Union[List[str], str]): A list of audio file paths or a single audio file path.
             transcripts (Union[List[str], str]): A list of corresponding transcripts or a single transcript.
