@@ -156,7 +156,7 @@ class Dataset(UnsupervisedDataset):
             assert len(cut.supervisions) == 1, f"{cut.id} has more than one supervision: {len(cut.supervisions)}."
             # Timestamps of the supervision are relative to the cut
             assert cut.supervisions[0].start >= 0
-            assert cut.supervisions[0].end <= cut.duration
+            assert round(cut.supervisions[0].end, 3) <= round(cut.duration, 3)
 
     @property
     def dataloader(self) -> DataLoader:
